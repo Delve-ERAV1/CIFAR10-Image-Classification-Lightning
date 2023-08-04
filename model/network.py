@@ -27,7 +27,7 @@ class ResBlock(nn.Module):
 
 
 class ResNet18(pl.LightningModule):
-  def __init__(self, train_loader_len, criterion, num_classes=10, lr=0.001):
+  def __init__(self, train_loader_len, criterion, num_classes=10, lr=0.001, max_lr=1.45E-03):
     super().__init__()
     self.save_hyperparameters()
 
@@ -92,7 +92,7 @@ class ResNet18(pl.LightningModule):
     optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=1e-4)
     scheduler = OneCycleLR(
                             optimizer, 
-                            max_lr=1.45E-03,
+                            max_lr=self.hparams.max_lr,
                             epochs=self.trainer.max_epochs,
                             steps_per_epoch=self.train_loader_len,
                             pct_start=5/self.trainer.max_epochs,
