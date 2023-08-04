@@ -167,13 +167,20 @@ with gr.Blocks() as gradcam:
                         gr.Number(minimum=0, maximum=10, label='n Top Classes', value=3, precision=0),
                         gr.Slider(0, 1, label='Transparency', value=0.6)]
 
-        upload_output = [gr.Label(),
+        upload_output = [gr.Label(label='Top Classes'),
                          gr.Gallery(label="Image | CAM | Image+CAM",
                                     show_label=True, elem_id="gallery1").style(columns=[3],
                                                                               rows=[1],
                                                                               object_fit="contain",
                                                                               height="auto")]
         button1 = gr.Button("Perform Inference")
+        gr.Examples(
+          examples=examples,
+          inputs=upload_input,
+          outputs=upload_output,
+          fn=upload_image_inference,
+          cache_examples=True,
+    )
 
 
     with gr.Tab("View Class Activate Maps"):
@@ -199,13 +206,7 @@ with gr.Blocks() as gradcam:
     button1.click(upload_image_inference, inputs=upload_input, outputs=upload_output)
     button21.click(class_gr, inputs=cam_input21, outputs=image_output21)
     button22.click(misclass_gr, inputs=cam_input22, outputs=image_output22)
-    gr.Examples(
-          examples=examples,
-          inputs=upload_input,
-          outputs=upload_output,
-          fn=upload_image_inference,
-          cache_examples=True,
-    )
+    
     
 
-gradcam.launch(debug=True)
+gradcam.launch()
