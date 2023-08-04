@@ -29,7 +29,7 @@ class ResBlock(nn.Module):
 class ResNet18(pl.LightningModule):
   def __init__(self, train_loader_len, criterion, num_classes=10, lr=0.001, max_lr=1.45E-03):
     super().__init__()
-    self.save_hyperparameters()
+    self.save_hyperparameters(ignore=['criterion'])
 
     self.criterion = criterion
     self.train_loader_len = train_loader_len
@@ -99,7 +99,10 @@ class ResNet18(pl.LightningModule):
                             div_factor=100,
                             three_phase=False,
                         )
-    return([optimizer], [scheduler])
+    if self.hparams.max_lr==1.45E-03:
+      return(optimizer)
+    else:
+      return([optimizer], [scheduler])
 
   def training_step(self, train_batch, batch_idx):
     data, target = train_batch
