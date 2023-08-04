@@ -19,7 +19,7 @@ from dataset.dataset import *
 
 
 model = ResNet18(20, None)
-model = model.load_from_checkpoint("/content/drive/MyDrive/ERAv1/S12/resnet18.ckpt", map_location=torch.device("cpu"))
+model = model.load_from_checkpoint("/content/S12/logs/lightning_logs/version_1/checkpoints/epoch=119-step=23520.ckpt", map_location=torch.device("cpu"))
 model.eval()
 
 dataloader_args = dict(shuffle=True, batch_size=64)
@@ -31,6 +31,8 @@ test_loader = torch.utils.data.DataLoader(test, **dataloader_args)
 target_layers = [model.res_block2.conv[-1]]
 targets = None
 device = torch.device("cpu")
+
+examples = get_examples()
 
 def upload_image_inference(input_img, n_top_classes, transparency):
 
@@ -143,20 +145,6 @@ def get_misclassified_data(model, device, test_loader):
 
 title = "CIFAR10 trained on ResNet18 (Pytorch Lightning) Model with GradCAM"
 description = "A simple Gradio interface to infer on ResNet model, get GradCAM results for existing & new Images"
-
-examples = [["image1.jpg", 4, 0.9], 
-            ["image2.jpg", 5, 0.7], 
-            ["image3.jpg", 6, 0.6], 
-            ["image4.jpg", 7, 0.6], 
-            ["image5.jpg", 3, 0.7], 
-            ["image6.jpg", 5, 0.2], 
-            ["image7.jpg", 2, 0.4], 
-            ["image8.jpg", 3, 0.5], 
-            ["image9.jpg", 1, 0.5], 
-            ["image0.jpg", 6, 0.1]]
-
-
-
 
 with gr.Blocks() as gradcam:
     classified_data, misclassified_data = get_misclassified_data(model, device, test_loader)
