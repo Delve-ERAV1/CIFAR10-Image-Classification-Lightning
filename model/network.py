@@ -95,7 +95,7 @@ class ResNet18(pl.LightningModule):
                             max_lr=1.45E-03,
                             epochs=self.trainer.max_epochs,
                             steps_per_epoch=self.train_loader_len,
-                            #pct_start=5/self.trainer.max_epochs,
+                            pct_start=5/self.trainer.max_epochs,
                             div_factor=100,
                             three_phase=False,
                         )
