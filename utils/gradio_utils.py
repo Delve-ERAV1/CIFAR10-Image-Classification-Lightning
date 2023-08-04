@@ -7,7 +7,7 @@ import PIL
 import io
 from PIL import Image
 import numpy as np
-
+import random
 
 transform = transforms.ToTensor()
 targets = None
@@ -26,6 +26,14 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
            'dog', 'frog', 'horse', 'ship', 'truck')
 
 transform = transforms.ToTensor()
+
+
+def get_examples():
+  example_images = [f'{c}.jpg' for c in classes]
+  example_top = [random.randint(0, 9) for r in range(10)]
+  example_transparency = [random.choice([0.6, 0.7, 0.8]) for r in range(10)]
+  examples = [[example_images[i], example_top[i], example_transparency[i]] for i in range(len(example_images))]
+  return(examples)
 
 
 def image_to_array(input_img, model, layer_val, transparency=0.6):
