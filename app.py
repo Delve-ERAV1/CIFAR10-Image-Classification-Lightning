@@ -19,8 +19,7 @@ from dataset.dataset import *
 
 
 model = ResNet18(20, None)
-model = model.load_from_checkpoint("/content/S12/logs/lightning_logs/version_1/checkpoints/epoch=119-step=23520.ckpt", map_location=torch.device("cpu"))
-model.eval()
+model = model.load_from_checkpoint("/content/drive/MyDrive/ERAV1/S12/resnet18.ckpt", map_location=torch.device("cpu"))
 
 dataloader_args = dict(shuffle=True, batch_size=64)
 _, test_transforms = get_transforms(mu, std)
@@ -38,7 +37,7 @@ def upload_image_inference(input_img, n_top_classes, transparency):
 
   org_img = input_img.copy()
 
-  input_img = transform(input_img)
+  input_img = test_transforms(image=org_img)['image']
   input_img = input_img.unsqueeze(0)
 
   outputs = model(input_img)
@@ -157,7 +156,7 @@ with gr.Blocks() as gradcam:
 
         upload_output = [gr.Label(label='Top Classes'),
                          gr.Gallery(label="Image | CAM | Image+CAM",
-                                    show_label=True, elem_id="gallery1").style(columns=[3],
+                                    show_label=True, min_width=80).style(columns=[3],
                                                                               rows=[1],
                                                                               object_fit="contain",
                                                                               height="auto")]
@@ -179,7 +178,7 @@ with gr.Blocks() as gradcam:
                           gr.Slider(0, 1, value=0.6, label='Transparency')]
 
             image_output21 = gr.Gallery(label="Images - Grad-CAM (correct)",
-                                      show_label=True, elem_id="gallery21")
+                                      show_label=True, min_width=80)
             button21 = gr.Button("View Images")
 
           with gr.Column():
@@ -188,7 +187,7 @@ with gr.Blocks() as gradcam:
                           gr.Slider(0, 1, value=0.6, label='Transparency')]
 
             image_output22 = gr.Gallery(label="Images - Grad-CAM (Misclassified)",
-                                        show_label=True, elem_id="gallery22")
+                                        show_label=True, min_width=80)
             button22 = gr.Button("View Images")
 
     button1.click(upload_image_inference, inputs=upload_input, outputs=upload_output)
