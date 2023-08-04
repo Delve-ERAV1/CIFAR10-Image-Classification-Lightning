@@ -1,138 +1,119 @@
-import torch
-from torch import nn
-from torch.nn import functional as F
-import pytorch_lightning as pl
-import torchmetrics
+from model.network import *
+from utils.utils import *
+from augment.augment import *
+from dataset.dataset import *
+import torchvision
+import pandas as pd
+import torch.nn as nn
+import torch.optim as optim
 from torch.optim.lr_scheduler import OneCycleLR
-from torchmetrics.functional import accuracy
+from pprint import pprint
+from torch_lr_finder import LRFinder
+import torch
+import matplotlib.pyplot as plt
+import seaborn as sn
+from pytorch_lightning import LightningModule, Trainer, seed_everything
+from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks.progress import TQDMProgressBar
+from pytorch_lightning.loggers import CSVLogger
+from torch.optim.lr_scheduler import OneCycleLR
+from torch.optim.swa_utils import AveragedModel, update_bn
+
+config = process_config("utils/config.yml")
+pprint(config)
+
+classes = config["data_loader"]["classes"]
+batch_size = config["data_loader"]['args']["batch_size"]
+num_workers = config["data_loader"]['args']["num_workers"]
+dropout = config["model_params"]["dropout"]
+seed = config["model_params"]["seed"]
+epochs = config["training_params"]["epochs"]
 
 
-class ResBlock(nn.Module):
+#####################################
 
-  def __init__(self, in_channel, out_channel, stride=1):
-    super(ResBlock, self).__init__()
-    self.conv = nn.Sequential(
-        nn.Conv2d(in_channel, in_channel, kernel_size=3, stride=1, padding=1, bias=False),
-        nn.BatchNorm2d(in_channel),
-        nn.ReLU(),
+SEED = 42
+cuda = torch.cuda.is_available()
+print("CUDA Available?", cuda)
 
-        nn.Conv2d(in_channel, out_channel, kernel_size=3, stride=1, padding=1, bias=False),
-        nn.BatchNorm2d(out_channel),
-        nn.ReLU(),
-    )
+# For reproducibility
+torch.manual_seed(SEED)
 
-  def forward(self, x):
-    return(self.conv(x))
+if cuda:
+  torch.cuda.manual_seed(SEED)
+
+# dataloader arguments
+dataloader_args = dict(shuffle=True, batch_size=batch_size, num_workers=2, pin_memory=True) if cuda else dict(shuffle=True, batch_size=64)
 
 
+train = CIFAR10Dataset(transform=None)
+train_loader = torch.utils.data.DataLoader(train, **dataloader_args)
+mu, std = get_stats(train_loader)
+train_transforms, test_transforms = get_transforms(mu, std)
 
-class ResNet18(pl.LightningModule):
-  def __init__(self, train_loader_len, criterion, num_classes=10, lr=0.001, max_lr=1.45E-03):
-    super().__init__()
-    self.save_hyperparameters(ignore=['criterion'])
+# train dataloader
+train = CIFAR10Dataset(transform=train_transforms)
+train_loader = torch.utils.data.DataLoader(train, **dataloader_args)
 
-    self.criterion = criterion
-    self.train_loader_len = train_loader_len
-    self.accuracy = torchmetrics.Accuracy(task="multiclass", num_classes=self.hparams.num_classes)
 
-    self.prep_layer = nn.Sequential(
-        nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False),
-        nn.BatchNorm2d(64),
-        nn.ReLU()
-    )
+# test dataloader
+test = CIFAR10Dataset(transform = test_transforms, train=False)
+test_loader = torch.utils.data.DataLoader(test, **dataloader_args)
 
-    self.layer_one = nn.Sequential(
-        nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=False),
-        nn.MaxPool2d(2,2),
-        nn.BatchNorm2d(128),
-        nn.ReLU()
-    )
 
-    self.res_block1 = ResBlock(128, 128)
+# get some random training images
+images, labels = next(iter(train_loader))
+classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-    self.layer_two = nn.Sequential(
-        nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1, bias=False),
-        nn.MaxPool2d(2,2),
-        nn.BatchNorm2d(256),
-        nn.ReLU()
-    )
 
-    self.layer_three = nn.Sequential(
-        nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1, bias=False),
-        nn.MaxPool2d(2,2),
-        nn.BatchNorm2d(512),
-        nn.ReLU()
-    )
+# show images
+imshow(torchvision.utils.make_grid(images[:4]))
+# print labels
+print(' '.join(f'{classes[labels[j]]:5s}' for j in range(4)))
 
-    self.res_block2 = ResBlock(512, 512)
 
-    self.max_pool = nn.MaxPool2d(4,4)
-    self.fc = nn.Linear(512, num_classes, bias=False)
+###########################
 
-  def forward(self, x):
-    x = self.prep_layer(x)
-    x = self.layer_one(x)
-    R1 = self.res_block1(x)
-    x = x + R1
+criterion = nn.CrossEntropyLoss()
 
-    x = self.layer_two(x)
+device = get_device()
 
-    x = self.layer_three(x)
-    R2 = self.res_block2(x)
-    x = x + R2
+model = ResNet18(len(train_loader), criterion)
 
-    x = self.max_pool(x)
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+max_lr = LR_Finder(model, criterion, optimizer, train_loader)
+print(f"Max LR @ {max_lr}")
 
-    x = x.view(x.size(0), -1)
-    x = self.fc(x)
 
-    return(x)
+model = ResNet18(len(train_loader), criterion, max_lr=max_lr)
 
-  def configure_optimizers(self):
-    optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=1e-4)
-    scheduler = OneCycleLR(
-                            optimizer, 
-                            max_lr=self.hparams.max_lr,
-                            epochs=self.trainer.max_epochs,
-                            steps_per_epoch=self.train_loader_len,
-                            pct_start=5/self.trainer.max_epochs,
-                            div_factor=100,
-                            three_phase=False,
-                        )
-    if self.hparams.max_lr==1.45E-03:
-      return(optimizer)
-    else:
-      return([optimizer], [scheduler])
+# training
+trainer = Trainer(
+  log_every_n_steps=1, 
+  enable_model_summary=True,
+  max_epochs=epochs, 
+  precision=16,
+  accelerator='auto',
+  devices=1 if torch.cuda.is_available() else None,
+  logger=CSVLogger(save_dir="logs/"),
+  callbacks=[LearningRateMonitor(logging_interval="step"), TQDMProgressBar(refresh_rate=10)],
+)
 
-  def training_step(self, train_batch, batch_idx):
-    data, target = train_batch
-    y_pred = self(data)
-    loss = self.criterion(y_pred, target)
 
-    pred = torch.argmax(y_pred.squeeze(), dim=1)
-    acc = accuracy(pred, target, task="multiclass", num_classes=self.hparams.num_classes)
 
-    self.log('train_loss', loss, prog_bar=True, on_step=False, on_epoch=True)
-    self.log('train_acc', acc, prog_bar=True, on_step=False, on_epoch=True)
 
-    return(loss)
+def main():
+   
+  trainer.fit(model, train_loader, test_loader)
+  trainer.test(model, test_loader)
 
-  def validation_step(self, batch, batch_idx):
-    return(self.evaluate(batch, 'val'))
+  metrics = pd.read_csv(f"{trainer.logger.log_dir}/metrics.csv")
+  del metrics["step"]
+  metrics.set_index("epoch", inplace=True)
+  print(metrics.dropna(axis=1, how="all").head())
+  sn.relplot(data=metrics, kind="line")
+  plt.show()
 
-  def test_step(self, batch, batch_idx):
-    return(self.evaluate(batch, 'test'))
 
-  def evaluate(self, batch, stage=None):
-      data, target = batch
-      y_pred = self(data)
-
-      loss = self.criterion(y_pred, target).item()
-      pred = torch.argmax(y_pred.squeeze(), dim=1)
-      acc = accuracy(pred, target, task="multiclass", num_classes=self.hparams.num_classes)
-
-      if stage:
-          self.log(f"{stage}_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
-          self.log(f"{stage}_acc", acc, prog_bar=True, on_step=False, on_epoch=True)
-
-      return pred, target
+if __name__ == "__main__":
+    main()
