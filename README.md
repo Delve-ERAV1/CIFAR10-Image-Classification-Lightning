@@ -91,8 +91,8 @@ Epoch 23: 100%
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃        Test metric        ┃       DataLoader 0        ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│         test_acc          │    0.7760999798774719     │
-│         test_loss         │    0.6389108896255493     │
+│         test_acc          │    0.8758000135421753     │
+│         test_loss         │    0.39947837591171265    │
 
 ```
 
@@ -113,7 +113,7 @@ def LR_Finder(model, criterion, optimizer, trainloader):
   return(max_lr[1])
 ```
 
-![image](https://github.com/Delve-ERAV1/S10/assets/11761529/fc84e96f-339f-4f1d-99b7-0fe726e8de02)
+![image](https://github.com/Delve-ERAV1/S12/assets/11761529/7f86fde6-532a-4c58-be91-5252216e125b)
 
 
 ## Dependencies
@@ -135,16 +135,21 @@ To run this project, you can clone the repository and run the main script:
 ```bash
 git clone https://github.com/Delve-ERAV1/S12.git
 cd S12
-gradio main.py
+gradio app.py
 ```
+
+### Upload New Image
+![cam](https://github.com/Delve-ERAV1/S12/assets/11761529/465538f3-884e-4446-8e9b-ed0824dd5670)
+
+### View Misclassified Images
+
+![upload](https://github.com/Delve-ERAV1/S12/assets/11761529/cbb2cb46-21ee-420b-af93-e08f5a1f4505)
 
 ## Results
 
-The model achieves an accuracy of approximately 
+![image](https://github.com/Delve-ERAV1/S12/assets/11761529/9f8843f5-9465-445c-9068-50b3197ea371)
 
 ## References
 
 Deep Residual Learning for Image Recognition Kaiming He et al
 Super-Convergence: Very Fast Training of Neural Networks Using Large Learning Rates Leslie N. Smith
-
-
