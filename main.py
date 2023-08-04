@@ -19,9 +19,6 @@ from pytorch_lightning.loggers import CSVLogger
 from torch.optim.lr_scheduler import OneCycleLR
 from torch.optim.swa_utils import AveragedModel, update_bn
 
-from utils.test import test as m_test
-from utils.train import train as m_train
-
 config = process_config("utils/config.yml")
 pprint(config)
 
